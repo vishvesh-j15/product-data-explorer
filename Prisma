@@ -1,0 +1,59 @@
+[span_6](start_span)// This satisfies the "Suggested Database schema" requirement[span_6](end_span)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Navigation {
+  id             Int        @id @default(autoincrement())
+  title          String
+  slug           String     @unique
+  lastScrapedAt  DateTime   @default(now())
+  categories     Category[]
+}
+
+model Category {
+  id             Int        @id @default(autoincrement())
+  title          String
+  slug           String     @unique
+  navigationId   Int
+  navigation     Navigation @relation(fields: [navigationId], references: [id])
+  products       Product[]
+  lastScrapedAt  DateTime   @default(now())
+}
+
+model Product {
+  id             Int      @id @default(autoincrement())
+  [span_7](start_span)sourceId       String   @unique //[span_7](end_span) Unique constraint
+  title          String
+  price          String
+  imageUrl       String
+  sourceUrl      String
+  lastScrapedAt  DateTime @default(now())
+  categoryId     Int
+  category       Category @relation(fields: [categoryId], references: [id])
+  details        ProductDetail?
+}
+
+model ProductDetail {
+  id             Int      @id @default(autoincrement())
+  productId      Int      @unique
+  product        Product  @relation(fields: [productId], references: [id])
+  description    String
+  specs          Json?
+  reviews        Review[]
+}
+
+model Review {
+  id              Int           @id @default(autoincrement())
+  productDetailId Int
+  productDetail   ProductDetail @relation(fields: [productDetailId], references: [id])
+  author          String
+  rating          Float
+  text            String
+}
