@@ -1,0 +1,50 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { PlaywrightCrawler, Dataset } from 'crawlee'; [span_9](start_span)//[span_9](end_span)
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class ScrapingService {
+  private readonly logger = new Logger(ScrapingService.name);
+
+  constructor(private prisma: PrismaService) {}
+
+  // Triggered when a user requests a category
+  async scrapeCategory(url: string, categoryId: number) {
+    this.logger.log(`Starting scrape for: ${url}`);
+
+    const crawler = new PlaywrightCrawler({
+      [span_10](start_span)//[span_10](end_span) Respecting limits: headless mode and gentle navigation
+      headless: true,
+      requestHandler: async ({ page, request, log }) => {
+        log.info(`Processing ${request.url}`);
+        
+        // Wait for product tiles to load
+        await page.waitForSelector('.product-item');
+
+        const products = await page.$$eval('.product-item', (items) => {
+          return items.map((item: any) => ({
+            title: item.querySelector('.title')?.innerText,
+            price: item.querySelector('.price')?.innerText,
+            [span_11](start_span)sourceId: item.getAttribute('data-id'), //[span_11](end_span) Source ID
+            imageUrl: item.querySelector('img')?.src,
+            sourceUrl: item.querySelector('a')?.href,
+          }));
+        });
+
+        [span_12](start_span)// Save to DB (Persistence)[span_12](end_span)
+        for (const p of products) {
+           await this.prisma.product.upsert({
+             where: { sourceId: p.sourceId },
+             update: { lastScrapedAt: new Date(), price: p.price },
+             create: {
+               ...p,
+               categoryId: categoryId
+             }
+           });
+        }
+      },
+    });
+
+    await crawler.run([url]);
+  }
+}
