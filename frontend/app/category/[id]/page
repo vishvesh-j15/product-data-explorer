@@ -1,0 +1,31 @@
+'use client';
+
+import useSWR from 'swr'; [span_20](start_span)//[span_20](end_span) Client data fetching
+import { ProductCard } from '@/components/ProductCard';
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+export default function CategoryPage({ params }: { params: { id: string } }) {
+  // Polls backend every 5 seconds to see if new scraped data arrived
+  const { data, error, isLoading } = useSWR(
+    `${process.env.NEXT_PUBLIC_API_URL}/products/${params.id}`, 
+    fetcher,
+    [span_21](start_span){ refreshInterval: 5000 } //[span_21](end_span) Live refresh
+  );
+
+  if (isLoading) return <div className="animate-pulse">Loading skeletons...</div>; [span_22](start_span)//[span_22](end_span)
+  if (error) return <div>Failed to load</div>;
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
+      {data.map((product: any) => (
+        <ProductCard 
+          key={product.sourceId}
+          title={product.title}
+          price={product.price}
+          image={product.imageUrl}
+        />
+      ))}
+    </div>
+  );
+}
